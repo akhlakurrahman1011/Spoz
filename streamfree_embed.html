@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sky Sports F1 | Live Stream</title>
+
+    
+    <script src="/analytics.js"></script>
+    
+
+    <script>
+        const NONCE = 'db3227a263e7b4cd';
+        fetch('/api/player-loaded/' + NONCE, { keepalive: true }).catch(() => {});
+
+        (function() {
+            const referrer = document.referrer;
+            const isLocal = referrer.includes('streamfree.top') || referrer.includes('strmfree.st');
+            window.__isOwnSite = isLocal;
+
+            if (isLocal) {
+                aclib.runPop({ zoneId: '10831062' });
+            } else {
+                aclib.runPop({ zoneId: '10818186' });
+            }
+        })();
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@swarmcloud/hls/hls.min.js"></script>
+    <script src="https://cdn.jwplayer.com/libraries/KB5zFt7A.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swarmcloud-jwplayer-hlsjs@latest/dist/jwplayer.hlsjs.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        #player-container {
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            position: relative;
+        }
+        #jwplayer {
+            width: 100% !important;
+            height: 100% !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="player-container">
+        <div id="jwplayer"></div>
+    </div>
+
+    <script>
+        let player = null;
+        let isSandboxed = false;
+
+        const STREAM_NAME = 'Sky Sports F1';
+        const STREAM_QUALITY = getQualityFromURL();
+        const STREAM_SERVER = getServerFromURL();
+        const HAS_ADBLOCK = (typeof aclib === 'undefined' || !aclib.runPop);
+
+        const IS_INDIA_LIMITED = false;
+        const IS_HD_PREFERRED = false;
+
+        const p2pConfig = {
+            live: true,
+            token: "streamfree",
+            channelId: `${STREAM_NAME}_${STREAM_QUALITY}`.replace(/\s/g, '_'),
+            announce: "https://ann.cdn-lab.shop/v1",
+            showSlogan: false,
+            sharePlaylist: false,
+            startFromSegmentOffset: 0,
+            trickleICE: true
+        };
+
+        function getServerFromURL() {
+            if (!window.__isOwnSite) return 'main';
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('server') || 'main';
+        }
+
+        function getQualityFromURL() {
+            if (!window.__isOwnSite) return '540p';
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('quality') || '540p';
+        }
+
+        const _0x = {"1080p": {"_e": 1784493310, "_n": "db3227a263e7b4cd", "_t": "uq2D4L-yCaHaCx_IQCcN8Q"}, "2160p": {"_e": 1784493310, "_n": "db3227a263e7b4cd", "_t": "040_NnSoFr9JdWfQeAOKbw"}, "540p": {"_e": 1784493310, "_n": "db3227a263e7b4cd", "_t": "FeB9pqSkxTqDN1vDBUjZYw"}, "720p": {"_e": 1784493310, "_n": "db3227a263e7b4cd", "_t": "l7q86cqseuDktwWE534IDw"}};
+        const _0xBackup = null;
+
+        async function getBestQuality() {
+            const paramQuality = window.__isOwnSite
+                ? new URLSearchParams(window.location.search).get('quality')
+                : null;
+            const restricted = (q) => IS_INDIA_LIMITED && (q === '1080p' || q === '2160p');
+            if (paramQuality && !restricted(paramQuality)) return paramQuality;
+            try {
+                const res = await fetch('/api/stream-status/skyf1');
+                const d = await res.json();
+                const q = d.qualities || {};
+
+                if (IS_INDIA_LIMITED) {
+                    // Prefer non-HD, but fall back to HD rather than serving nothing
+                    if (q['720p'])  return '720p';
+                    if (q['540p'])  return '540p';
+                    if (q['1080p']) return '1080p';
+                    if (q['2160p']) return '2160p';
+                } else {
+                    if (IS_HD_PREFERRED && q['1080p']) return '1080p';
+                    if (q['720p'])  return '720p';
+                    if (q['1080p']) return '1080p';
+                    if (q['2160p']) return '2160p';
+                    if (q['540p'])  return '540p';
+                }
+            } catch (e) {}
+            return '720p';
+        }
+
+        async function getStreamSource() {
+            try {
+                const serverParam = window.__isOwnSite
+                    ? new URLSearchParams(window.location.search).get('server')
+                    : null;
+
+                if (serverParam === 'backup' && _0xBackup) {
+                    p2pConfig.channelId = `${STREAM_NAME}_backup`.replace(/\s/g, '_');
+                    return `/proxy-stream/skyf1/playlist.m3u8?_t=${_0xBackup._t}&_e=${_0xBackup._e}&_n=${_0xBackup._n}`;
+                }
+
+                const streamKeyUrl = serverParam
+                    ? '/get-stream-key/skyf1?force_server=' + encodeURIComponent(serverParam)
+                    : '/get-stream-key/skyf1';
+
+                const [streamData, quality] = await Promise.all([
+                    fetch(streamKeyUrl).then(r => r.json()),
+                    getBestQuality()
+                ]);
+                const data = streamData;
+                let qualitySuffix = quality === '2160p' ? '2160p' : quality === '1080p' ? '1080p' : quality === '720p' ? '720p' : '540p';
+                p2pConfig.channelId = `${STREAM_NAME}_${qualitySuffix}`.replace(/\s/g, '_');
+
+                if (data.is_external && data.external_url) {
+                    return data.external_url;
+                }
+
+                const serverDomain = data.server_domain || '';
+                const serverName = data.server_name || 'origin';
+
+                // m3u8 always served from origin (auth-protected).
+                // For CDN, the playlist rewrites segment URLs to absolute CDN paths
+                // so the player fetches segments from the edge without needing auth.
+                let url = serverName !== 'origin'
+                    ? `/live-cdn/skyf1${qualitySuffix}/index.m3u8`
+                    : `/live/skyf1${qualitySuffix}/index.m3u8`;
+                const p = _0x[qualitySuffix];
+                if (p) {
+                    url += `?_t=${p._t}&_e=${p._e}&_n=${p._n}`;
+                }
+
+                return url;
+            } catch (error) {
+                const quality = getQualityFromURL();
+                let qualitySuffix = quality === '2160p' ? '2160p' : quality === '1080p' ? '1080p' : quality === '720p' ? '720p' : '540p';
+                p2pConfig.channelId = `${STREAM_NAME}_${qualitySuffix}`.replace(/\s/g, '_');
+                return `/live/skyf1${qualitySuffix}/index.m3u8`;
+            }
+        }
+
+        async function initPlayer() {
+            const source = await getStreamSource();
+
+            // Backup is a one-off proxied external playlist with no P2P swarm behind it —
+            // registering the P2P service worker is pure overhead here (and the likely cause
+            // of the black-frame/stall on mobile), so skip straight to a plain jwplayer setup.
+            const isBackupSource = source.startsWith('/proxy-stream/');
+            if (isBackupSource) {
+                player = jwplayer("jwplayer").setup({
+                    file: source,
+                    type: "hls",
+                    preload: "auto",
+                    autostart: false,
+                    mute: false,
+                    width: "100%",
+                    height: "100%",
+                    stretching: "uniform",
+                    controls: true,
+                    displaytitle: false,
+                    displaydescription: false,
+                    abouttext: "",
+                    aboutlink: "",
+                    reconnectTimeout: 1,
+                    retryOnFailure: true,
+                    liveTimeout: 60,
+                    skin: { name: "seven" },
+                    logo: { hide: true },
+                    related: { displayMode: "none" }
+                });
+                return;
+            }
+
+            const isSamsungBrowser = navigator.userAgent.indexOf('SamsungBrowser') > -1;
+            if (!isSamsungBrowser && !Hls.P2pEngine.isMSESupported() || Hls.P2pEngine.getBrowser() === 'iPhone-Safari') {
+                new Hls.P2pEngine.ServiceWorkerEngine(p2pConfig);
+            }
+
+            Hls.P2pEngine.tryRegisterServiceWorker(p2pConfig).then(() => {
+                player = jwplayer("jwplayer").setup({
+                    file: source,
+                    type: "hls",
+                    preload: "auto",
+                    autostart: false,
+                    mute: false,
+                    width: "100%",
+                    height: "100%",
+                    stretching: "uniform",
+                    controls: true,
+                    displaytitle: false,
+                    displaydescription: false,
+                    abouttext: "",
+                    aboutlink: "",
+                    reconnectTimeout: 1,
+                    retryOnFailure: true,
+                    liveTimeout: 60,
+                    skin: { name: "seven" },
+                    logo: { hide: true },
+                    related: { displayMode: "none" },
+                    hlsjsdefault: true,
+                    hlsjsConfig: { p2pConfig }
+                });
+                jwplayer_hls_provider.attach();
+            }).catch(async () => {
+                player = jwplayer("jwplayer").setup({
+                    file: source,
+                    type: "hls",
+                    preload: "auto",
+                    autostart: false,
+                    mute: false,
+                    width: "100%",
+                    height: "100%",
+                    stretching: "uniform",
+                    controls: true,
+                    displaytitle: false,
+                    displaydescription: false,
+                    abouttext: "",
+                    aboutlink: "",
+                    reconnectTimeout: 1,
+                    retryOnFailure: true,
+                    liveTimeout: 60,
+                    skin: { name: "seven" },
+                    logo: { hide: true },
+                    related: { displayMode: "none" }
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initPlayer();
+        });
+
+        window.sandDetect = () => {
+            isSandboxed = true;
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100vw;height:100vh;background:#000;color:#fff;font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;font-size:1.5rem;text-align:center;">Embed this stream without sandbox</div>';
+        };
+
+        const iOS = /iPad|iPhone|iPod/.test(window.navigator.platform) ||
+            ("MacIntel" === window.navigator.platform && navigator.maxTouchPoints > 1),
+            Edge = /Edge/.test(window.navigator.userAgent),
+            Opera = /OPR/.test(window.navigator.userAgent) && /Mobile Safari/.test(window.navigator.userAgent),
+            Android = /Andr[o0]id/i.test(window.navigator.userAgent),
+            isWebOS = /Web[0O]S/.test(window.navigator.userAgent),
+            NetCast = /NetCast/.test(window.navigator.userAgent),
+            TitanOS = /WhaleTV/.test(window.navigator.userAgent);
+
+        if (!(iOS || Edge || isWebOS || NetCast || TitanOS || Android || Opera)) {
+            document.body.insertAdjacentHTML("beforeend",
+                '<object id="sandDetect" data="data:application/pdf;base64,aG1t" width="1px" height="1px" style="position:absolute;top:-500px;left:-500px;visibility:hidden;" onerror="window.sandDetect()"></object>'
+            );
+        }
+
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.shiftKey && e.key === 'C') ||
+                (e.ctrlKey && e.key === 'u')) {
+                e.preventDefault();
+            }
+        });
+
+        
+        (()=>{let a=()=>{document.body.insertAdjacentHTML('beforeend','<iframe style="visibility:hidden"id="close"width="1"height="1"scrolling="no"frameborder="0"src="/ad.html"></iframe>');setTimeout(()=>{document.querySelector("#close").remove();},9000);setTimeout(a,600000)};a()})();
+        
+    </script>
+
+</body>
+</html>
